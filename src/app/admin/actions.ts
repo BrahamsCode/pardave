@@ -1,8 +1,5 @@
 "use server";
 
-import { mkdir, writeFile } from "node:fs/promises";
-import { randomBytes } from "node:crypto";
-import { join } from "node:path";
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { refresh, updateTag } from "next/cache";
@@ -11,7 +8,6 @@ import { db } from "@/lib/db";
 import { createSession, deleteSession, requireAdmin, requireUser } from "@/lib/auth";
 import { CATALOG_TAG, SETTINGS_TAG } from "@/lib/catalog";
 import { slugify } from "@/lib/utils";
-import { uploadDir } from "@/lib/uploads";
 import type { OrderStatus } from "@/generated/prisma/client";
 
 export type ActionState = {
@@ -78,19 +74,14 @@ const productSchema = z.object({
 });
 
 async function saveUpload(file: File) {
-  const types: Record<string, string> = {
-    "image/webp": "webp",
-    "image/jpeg": "jpg",
-    "image/png": "png",
-    "image/avif": "avif",
-  };
-  const ext = types[file.type];
-  if (!ext) throw new Error("Formato de imagen no permitido (usa JPG, PNG, WEBP o AVIF)");
+  const types = ["image/webp", "image/jpeg", "image/png", "image/avif"];
+  if (!types.includes(file.type)) throw new Error("Formato de imagen no permitido (usa JPG, PNG, WEBP o AVIF)");
   if (file.size > 4 * 1024 * 1024) throw new Error("La imagen supera los 4 MB");
-  const name = `${Date.now().toString(36)}-${randomBytes(4).toString("hex")}.${ext}`;
-  await mkdir(uploadDir(), { recursive: true });
-  await writeFile(join(uploadDir(), name), Buffer.from(await file.arrayBuffer()));
-  return `/api/uploads/${name}`;
+  const upload = await db.upload.create({
+    data: { contentType: file.type, size: file.size, data: new Uint8Array(await file.arrayBuffer()) },
+    select: { id: true },
+  });
+  return `/api/uploads/${upload.id}`;
 }
 
 function readRows<T extends string>(formData: FormData, prefix: string, keys: readonly T[]) {

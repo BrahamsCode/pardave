@@ -79,7 +79,6 @@ usuarios.
 | `SESSION_SECRET` | Clave aleatoria de 32+ caracteres para firmar sesiones (`openssl rand -base64 48`) |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Usuario administrador que crea el seed |
 | `NEXT_PUBLIC_SITE_URL` | URL pública del sitio (para SEO y sitemap) |
-| `UPLOAD_DIR` | Opcional. Carpeta donde se guardan las imágenes subidas (por defecto `./storage/uploads`) |
 
 ## Producción
 
@@ -91,31 +90,27 @@ npm run build        # requiere acceso a la base de datos (prerenderiza el catá
 npm start
 ```
 
-### Render.com (recomendado, incluido en `render.yaml`)
+### Render.com, plan gratuito (incluido en `render.yaml`)
 
-1. En Render: **New → Blueprint** y elige este repositorio (rama a desplegar).
-2. Render crea la web `pardave` y la base PostgreSQL `pardave-db`, y pide dos valores:
-   - `ADMIN_PASSWORD`: contraseña del administrador inicial.
-   - `NEXT_PUBLIC_SITE_URL`: la URL pública, p. ej. `https://pardave.onrender.com`.
-3. Cada despliegue ejecuta `npm ci && npm run render-build` (migraciones → seed → build) y
-   arranca con `npm start`. `SESSION_SECRET` se genera solo.
-4. Entra a `/admin` y configura el número de WhatsApp real en *Configuración*.
+1. Crea una base PostgreSQL gratuita en [Neon](https://neon.tech) (región *US East* u *Oregon*)
+   y copia su *connection string* (`postgresql://…?sslmode=require`).
+2. En Render: **Blueprints → New Blueprint Instance**, elige este repositorio y la rama.
+3. Render pide tres valores: `DATABASE_URL` (la de Neon), `ADMIN_PASSWORD` y
+   `NEXT_PUBLIC_SITE_URL` (p. ej. `https://pardave.onrender.com`). `SESSION_SECRET` se genera solo.
+4. Cada despliegue ejecuta `npm ci && npm run render-build` (migraciones → seed → build) y
+   arranca con `npm start`.
+5. Entra a `/admin` y configura el número de WhatsApp real en *Configuración*.
 
 El seed es seguro en cada despliegue: solo carga el catálogo si la base está vacía, así que no
-pisa lo que edites en el panel (con `SEED_FORCE=1` se recarga a la fuerza). Las imágenes
-subidas desde el panel se guardan en el disco persistente montado en `/var/data`.
+pisa lo que edites en el panel (con `SEED_FORCE=1` se recarga a la fuerza). Las imágenes que se
+suben desde el panel se guardan en la base de datos, así que no se necesita disco persistente.
 
-Costos: el blueprint usa el plan web **Starter** (requerido para el disco) y Postgres
-**Basic-256mb**. Para probar gratis puedes cambiar a `plan: free` y quitar el bloque `disk`,
-con estas limitaciones: el servicio se duerme tras unos minutos sin visitas, la base gratuita
-expira a los 30 días y las imágenes subidas se pierden en cada despliegue.
+Limitación del plan gratuito de Render: el sitio se “duerme” tras ~15 minutos sin visitas y la
+primera visita después tarda unos 30–60 segundos. El plan Starter (US$7/mes) lo evita.
 
 Otras opciones:
-- **VPS / Docker** (Railway, Render, DigitalOcean, servidor propio): funciona tal cual; monta
-  `UPLOAD_DIR` en un volumen persistente para no perder las imágenes subidas.
-- **Vercel** + PostgreSQL gestionado (Neon, Supabase, Prisma Postgres): funciona; para subir
-  imágenes desde el panel en un entorno serverless conviene cambiar `saveUpload` en
-  `src/app/admin/actions.ts` por un almacenamiento de objetos (Vercel Blob, S3, R2).
+- **VPS / Docker** (Railway, DigitalOcean, servidor propio) o **Vercel**: funciona tal cual
+  con cualquier PostgreSQL; no requiere disco porque las imágenes subidas van a la base.
 
 ## Estructura
 

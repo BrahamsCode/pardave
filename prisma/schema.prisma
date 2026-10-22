@@ -179,3 +179,13 @@ model Setting {
   value     String
   updatedAt DateTime @updatedAt
 }
+
+/// Imágenes subidas desde el panel. Se guardan en la base para no depender de un disco
+/// persistente (los planes gratuitos de hosting borran los archivos en cada despliegue).
+model Upload {
+  id          String   @id @default(cuid())
+  contentType String
+  size        Int
+  data        Bytes
+  createdAt   DateTime @default(now())
+}
