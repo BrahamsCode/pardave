@@ -144,18 +144,19 @@ async function main() {
     }
   }
 
-  const email = (process.env.ADMIN_EMAIL ?? "admin@pardave.pe").toLowerCase();
-  const password = process.env.ADMIN_PASSWORD ?? "Pardave2026!";
+  // trim(): los campos de los paneles de hosting suelen colar un salto de línea o espacios.
+  const email = (process.env.ADMIN_EMAIL ?? "admin@pardave.pe").trim().toLowerCase();
+  const password = (process.env.ADMIN_PASSWORD ?? "Pardave2026!").trim();
+  const passwordHash = await bcrypt.hash(password, 10);
+  // ADMIN_PASSWORD_RESET=1 vuelve a fijar la contraseña del admin (útil si se olvidó);
+  // sin esa variable no se toca, para respetar los cambios hechos desde el panel.
+  const reset = process.env.ADMIN_PASSWORD_RESET === "1";
   await db.user.upsert({
     where: { email },
-    create: {
-      email,
-      name: "Administrador",
-      role: "ADMIN",
-      passwordHash: await bcrypt.hash(password, 10),
-    },
-    update: {},
+    create: { email, name: "Administrador", role: "ADMIN", passwordHash },
+    update: reset ? { passwordHash, active: true } : {},
   });
+  if (reset) console.log(`Contraseña del administrador ${email} restablecida.`);
 
   const settings: Record<string, string> = {
     companyName: "Inversiones Pardave E.I.R.L.",
