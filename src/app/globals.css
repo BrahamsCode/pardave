@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+
+  /* Marca: azul corporativo + verde menta del logo + lima de las etiquetas del catálogo */
+  --color-navy-950: #061a3d;
+  --color-navy-900: #0a2560;
+  --color-navy-800: #0f3279;
+  --color-navy-700: #16429a;
+  --color-brand-50: #eef5ff;
+  --color-brand-100: #d9e8ff;
+  --color-brand-200: #bcd6ff;
+  --color-brand-300: #8ebcff;
+  --color-brand-400: #5996fb;
+  --color-brand-500: #3373f2;
+  --color-brand-600: #1f57d6;
+  --color-brand-700: #1a46ad;
+  --color-mint-50: #ecfbf4;
+  --color-mint-100: #d2f5e4;
+  --color-mint-200: #a8e9cc;
+  --color-mint-300: #72d6ad;
+  --color-mint-400: #45bf8d;
+  --color-mint-500: #24a374;
+  --color-mint-600: #16835e;
+  --color-mint-700: #13694d;
+  --color-lime-300: #d9f76a;
+  --color-lime-400: #c8f03c;
+  --color-lime-500: #a9d31b;
+  --color-surface: #f4f7fb;
+  --color-ink: #0c1b33;
+  --color-muted: #55657e;
+  --color-line: #e2e8f1;
+
+  --shadow-card: 0 1px 2px rgb(12 27 51 / 0.04), 0 4px 16px -4px rgb(12 27 51 / 0.08);
+  --shadow-lift: 0 2px 4px rgb(12 27 51 / 0.05), 0 18px 40px -12px rgb(12 27 51 / 0.22);
+
+  --animate-fade-up: fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-marquee: marquee 40s linear infinite;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes marquee {
+    to {
+      transform: translateX(-50%);
+    }
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background: #ffffff;
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  ::selection {
+    background: var(--color-brand-200);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+}
+
+@utility container-page {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 80rem;
+  padding-inline: 1rem;
+  @variant sm {
+    padding-inline: 1.5rem;
+  }
+  @variant lg {
+    padding-inline: 2rem;
+  }
+}
+
+@utility text-balance {
+  text-wrap: balance;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

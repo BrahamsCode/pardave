@@ -1,0 +1,181 @@
+// Esquema de datos de Inversiones Pardave E.I.R.L.
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+enum OrderStatus {
+  PENDIENTE
+  CONFIRMADO
+  EN_PREPARACION
+  ENVIADO
+  ENTREGADO
+  CANCELADO
+}
+
+enum OrderChannel {
+  WEB
+  WHATSAPP
+  ADMIN
+}
+
+enum DeliveryMethod {
+  RECOJO
+  DELIVERY
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(STAFF)
+  active       Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  description String?
+  sortOrder   Int       @default(0)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Product {
+  id           String           @id @default(cuid())
+  sku          String           @unique
+  slug         String           @unique
+  name         String
+  presentation String?
+  brand        String?
+  description  String?
+  image        String?
+  categoryId   String
+  category     Category         @relation(fields: [categoryId], references: [id])
+  inStock      Boolean          @default(true)
+  active       Boolean          @default(true)
+  featured     Boolean          @default(false)
+  stock        Int?
+  /// Precio más bajo entre unidades y variantes; se usa para ordenar y mostrar "desde".
+  priceFrom    Decimal?         @db.Decimal(10, 2)
+  prices       ProductPrice[]
+  variants     ProductVariant[]
+  orderItems   OrderItem[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([categoryId])
+  @@index([active, featured])
+}
+
+/// Precio por unidad de venta: unidad, docena, caja, cajón, tira, paquete, pack…
+model ProductPrice {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  unit      String
+  amount    Decimal @db.Decimal(10, 2)
+  sortOrder Int     @default(0)
+
+  @@index([productId])
+}
+
+/// Medidas o variantes con precio propio (p. ej. suturas, sondas, bombillas).
+model ProductVariant {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  label     String
+  price     Decimal @db.Decimal(10, 2)
+  sortOrder Int     @default(0)
+
+  @@index([productId])
+}
+
+model Customer {
+  id             String   @id @default(cuid())
+  name           String
+  businessName   String?
+  documentType   String?
+  documentNumber String?
+  email          String?
+  phone          String   @unique
+  address        String?
+  district       String?
+  city           String?
+  orders         Order[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Order {
+  id             String         @id @default(cuid())
+  number         Int            @unique @default(autoincrement())
+  code           String         @unique
+  customerId     String
+  customer       Customer       @relation(fields: [customerId], references: [id])
+  status         OrderStatus    @default(PENDIENTE)
+  channel        OrderChannel   @default(WEB)
+  deliveryMethod DeliveryMethod @default(RECOJO)
+  address        String?
+  notes          String?
+  internalNotes  String?
+  subtotal       Decimal        @db.Decimal(12, 2)
+  total          Decimal        @db.Decimal(12, 2)
+  items          OrderItem[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productName String
+  sku         String?
+  option      String
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  quantity    Int
+  lineTotal   Decimal  @db.Decimal(12, 2)
+
+  @@index([orderId])
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  company   String?
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
