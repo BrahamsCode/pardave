@@ -91,7 +91,26 @@ npm run build        # requiere acceso a la base de datos (prerenderiza el catá
 npm start
 ```
 
-Opciones recomendadas:
+### Render.com (recomendado, incluido en `render.yaml`)
+
+1. En Render: **New → Blueprint** y elige este repositorio (rama a desplegar).
+2. Render crea la web `pardave` y la base PostgreSQL `pardave-db`, y pide dos valores:
+   - `ADMIN_PASSWORD`: contraseña del administrador inicial.
+   - `NEXT_PUBLIC_SITE_URL`: la URL pública, p. ej. `https://pardave.onrender.com`.
+3. Cada despliegue ejecuta `npm ci && npm run render-build` (migraciones → seed → build) y
+   arranca con `npm start`. `SESSION_SECRET` se genera solo.
+4. Entra a `/admin` y configura el número de WhatsApp real en *Configuración*.
+
+El seed es seguro en cada despliegue: solo carga el catálogo si la base está vacía, así que no
+pisa lo que edites en el panel (con `SEED_FORCE=1` se recarga a la fuerza). Las imágenes
+subidas desde el panel se guardan en el disco persistente montado en `/var/data`.
+
+Costos: el blueprint usa el plan web **Starter** (requerido para el disco) y Postgres
+**Basic-256mb**. Para probar gratis puedes cambiar a `plan: free` y quitar el bloque `disk`,
+con estas limitaciones: el servicio se duerme tras unos minutos sin visitas, la base gratuita
+expira a los 30 días y las imágenes subidas se pierden en cada despliegue.
+
+Otras opciones:
 - **VPS / Docker** (Railway, Render, DigitalOcean, servidor propio): funciona tal cual; monta
   `UPLOAD_DIR` en un volumen persistente para no perder las imágenes subidas.
 - **Vercel** + PostgreSQL gestionado (Neon, Supabase, Prisma Postgres): funciona; para subir

@@ -76,64 +76,72 @@ async function main() {
     adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
   });
 
-  console.log("Limpiando catálogo…");
-  await db.productPrice.deleteMany();
-  await db.productVariant.deleteMany();
-  await db.product.deleteMany({ where: { orderItems: { none: {} } } });
+  // Para que sea seguro ejecutarlo en cada despliegue: el catálogo solo se carga si la base está
+  // vacía, así no se pisan los cambios hechos desde el panel. SEED_FORCE=1 lo recarga a la fuerza.
+  const existing = await db.product.count();
+  const loadCatalog = existing === 0 || process.env.SEED_FORCE === "1";
+  if (!loadCatalog) {
+    console.log(`Catálogo ya cargado (${existing} productos); se omite. Usa SEED_FORCE=1 para recargarlo.`);
+  } else {
+    console.log("Limpiando catálogo…");
+    await db.productPrice.deleteMany();
+    await db.productVariant.deleteMany();
+    await db.product.deleteMany({ where: { orderItems: { none: {} } } });
 
-  const categoryIds = new Map<string, string>();
-  const ordered = [...catalog.categories].sort(
-    (a, b) => CATEGORY_ORDER.indexOf(a.slug) - CATEGORY_ORDER.indexOf(b.slug),
-  );
-  for (const [index, category] of ordered.entries()) {
-    const saved = await db.category.upsert({
-      where: { slug: category.slug },
-      create: {
-        slug: category.slug,
-        name: category.name,
-        description: DESCRIPTIONS[category.slug],
-        sortOrder: index,
-      },
-      update: { name: category.name, description: DESCRIPTIONS[category.slug], sortOrder: index },
-    });
-    categoryIds.set(category.slug, saved.id);
-  }
+    const categoryIds = new Map<string, string>();
+    const ordered = [...catalog.categories].sort(
+      (a, b) => CATEGORY_ORDER.indexOf(a.slug) - CATEGORY_ORDER.indexOf(b.slug),
+    );
+    for (const [index, category] of ordered.entries()) {
+      const saved = await db.category.upsert({
+        where: { slug: category.slug },
+        create: {
+          slug: category.slug,
+          name: category.name,
+          description: DESCRIPTIONS[category.slug],
+          sortOrder: index,
+        },
+        update: { name: category.name, description: DESCRIPTIONS[category.slug], sortOrder: index },
+      });
+      categoryIds.set(category.slug, saved.id);
+    }
 
-  console.log(`Cargando ${catalog.products.length} productos…`);
-  for (const product of catalog.products) {
-    const data = {
-      sku: product.sku,
-      name: product.name,
-      presentation: product.presentation || null,
-      brand: product.brand,
-      image: product.image,
-      inStock: product.inStock,
-      featured: FEATURED.includes(product.slug),
-      priceFrom: Math.min(...product.prices.map((p) => p.price), ...product.variants.map((v) => v.price)),
-      categoryId: categoryIds.get(product.category)!,
-    };
-    await db.product.upsert({
-      where: { slug: product.slug },
-      create: {
-        ...data,
-        slug: product.slug,
-        prices: {
-          create: product.prices.map((p, i) => ({ unit: p.unit, amount: p.price, sortOrder: i })),
+    console.log(`Cargando ${catalog.products.length} productos…`);
+    for (const product of catalog.products) {
+      const data = {
+        sku: product.sku,
+        name: product.name,
+        presentation: product.presentation || null,
+        brand: product.brand,
+        image: product.image,
+        inStock: product.inStock,
+        featured: FEATURED.includes(product.slug),
+        priceFrom: Math.min(...product.prices.map((p) => p.price), ...product.variants.map((v) => v.price)),
+        categoryId: categoryIds.get(product.category)!,
+      };
+      await db.product.upsert({
+        where: { slug: product.slug },
+        create: {
+          ...data,
+          slug: product.slug,
+          prices: {
+            create: product.prices.map((p, i) => ({ unit: p.unit, amount: p.price, sortOrder: i })),
+          },
+          variants: {
+            create: product.variants.map((v, i) => ({ label: v.label, price: v.price, sortOrder: i })),
+          },
         },
-        variants: {
-          create: product.variants.map((v, i) => ({ label: v.label, price: v.price, sortOrder: i })),
+        update: {
+          ...data,
+          prices: {
+            create: product.prices.map((p, i) => ({ unit: p.unit, amount: p.price, sortOrder: i })),
+          },
+          variants: {
+            create: product.variants.map((v, i) => ({ label: v.label, price: v.price, sortOrder: i })),
+          },
         },
-      },
-      update: {
-        ...data,
-        prices: {
-          create: product.prices.map((p, i) => ({ unit: p.unit, amount: p.price, sortOrder: i })),
-        },
-        variants: {
-          create: product.variants.map((v, i) => ({ label: v.label, price: v.price, sortOrder: i })),
-        },
-      },
-    });
+      });
+    }
   }
 
   const email = (process.env.ADMIN_EMAIL ?? "admin@pardave.pe").toLowerCase();
@@ -164,7 +172,7 @@ async function main() {
   }
 
   const count = await db.product.count();
-  console.log(`Listo: ${count} productos, ${categoryIds.size} categorías. Admin: ${email}`);
+  console.log(`Listo: ${count} productos. Admin: ${email}`);
   await db.$disconnect();
 }
 
